@@ -103,7 +103,8 @@ D:\nian\
 │       ├── base.py               # 工具基类
 │       ├── file_tool.py          # 文件操作工具
 │       ├── code_tool.py          # 代码执行工具
-│       └── http_tool.py          # HTTP 请求工具
+│       ├── http_tool.py          # HTTP 请求工具
+│       └── data_tool.py          # 数据分析工具（Pandas + Matplotlib）
 ├── web/                          # Web 前端
 │   ├── server.py                 # FastAPI 服务
 │   ├── index.html                # 主页面
@@ -143,7 +144,7 @@ D:\nian\
 | **代码执行（CodeTool）** | 运行 Python/Shell 脚本 | ⭐⭐⭐ | ✅ 已完成 |
 | **网络请求（HttpTool）** | 调用外部 API、抓取网页 | ⭐⭐ | ✅ 已完成 |
 | **文件操作（FileTool）** | 读/写/追加/列目录 | ⭐⭐ | ✅ 已完成 |
-| 数据分析（DataTool） | Pandas + Matplotlib 可视化 | ⭐⭐⭐ | 🔲 P1 |
+| 数据分析（DataTool） | Pandas + Matplotlib 可视化 | ⭐⭐⭐ | ✅ 已完成 |
 | 数据库查询（DBTool） | SQLite/MySQL/PostgreSQL | ⭐⭐⭐ | 🔲 P2 |
 | 浏览器操作（BrowserTool） | Selenium/Playwright 自动化 | ⭐⭐⭐⭐ | 🔲 P3 |
 
@@ -207,7 +208,8 @@ D:\nian\
 |------|------|------|------|
 | **P0** | 核心功能（记忆 + 工具 + GUI + 打包） | ✅ 已完成 | 2026-06-24 |
 | **P0** | 端到端测试验证 | ✅ 已完成 | 2026-06-24 |
-| P1 | 数据分析（DataTool）+ 安全沙箱 + 性能优化 | 🔲 待规划 | - |
+| P1 | 数据分析（DataTool） | ✅ 已完成 | 2026-06-24 |
+| P1 | 安全沙箱 + 性能优化 | 🔲 待规划 | - |
 | P2 | MCP 协议 + TTS/STT + 权限控制 | 🔲 待规划 | - |
 | P3 | 浏览器自动化 + 本地 Embedding | 🔲 待规划 | - |
 

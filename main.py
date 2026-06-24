@@ -9,6 +9,7 @@ from src.memory.manager import MemoryManager
 from src.tools.file_tool import FileTool
 from src.tools.code_tool import CodeTool
 from src.tools.http_tool import HttpTool
+from src.tools.data_tool import DataTool
 
 
 def main():
@@ -25,7 +26,7 @@ def main():
 
     # 初始化 Agent（MemoryManager 在内部自动创建）
     llm = LLMClient()
-    tools = [FileTool(), CodeTool(), HttpTool()]
+    tools = [FileTool(), CodeTool(), HttpTool(), DataTool()]
     agent = Agent(llm_client=llm, tools=tools)
 
     # 显示当前配置

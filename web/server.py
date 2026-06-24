@@ -19,6 +19,7 @@ from src.memory.manager import MemoryManager
 from src.tools.file_tool import FileTool
 from src.tools.code_tool import CodeTool
 from src.tools.http_tool import HttpTool
+from src.tools.data_tool import DataTool
 
 load_dotenv(override=True)
 
@@ -41,7 +42,7 @@ async def universal_exception_handler(request, exc):
 def startup():
     global agent
     llm = LLMClient()
-    tools = [FileTool(), CodeTool(), HttpTool()]
+    tools = [FileTool(), CodeTool(), HttpTool(), DataTool()]
     memory = MemoryManager()
     agent = Agent(llm_client=llm, tools=tools, memory_manager=memory)
     print("[Agent] 已加载，模型:", os.getenv("DEFAULT_MODEL", "unknown"))
