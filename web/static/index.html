@@ -490,9 +490,6 @@
                 <span style="font-size:12px;color:var(--text-muted)">按 Enter 发送，Shift+Enter 换行</span>
             </div>
             <div class="chat-messages" id="chat-messages">
-                <div class="message agent">
-                    哟，来啦？我是年，别看我一副闲人模样，打铁、写代码、折腾数据这些活儿我可都拿手。今天想整点什么乐子？
-                </div>
             </div>
             <div class="chat-input-area">
                 <textarea class="chat-input" id="chat-input" placeholder="输入消息..." rows="1"></textarea>
@@ -726,6 +723,21 @@
             chatInput.style.height = 'auto';
             chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
         });
+
+        // 页面加载时触发 LLM 生成自然开场白
+        (function triggerOpening() {
+            fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: '[用户打开了对话窗口]' })
+            }).then(function(res) { return res.json(); }).then(function(data) {
+                appendMessage('agent', data.response || '……');
+                messageCount += 1;
+                statMessages.textContent = messageCount;
+            }).catch(function(err) {
+                appendMessage('agent', '连接失败，稍后再试');
+            });
+        })();
     </script>
 </body>
 </html>
