@@ -181,6 +181,45 @@
             border-bottom: 1px solid var(--border-gold-light);
         }
 
+        /* Mode switcher */
+        .mode-switcher {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(237, 232, 224, 0.5);
+            border: 1px solid var(--border-gold-light);
+            border-radius: 20px;
+            padding: 3px;
+        }
+
+        .mode-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-label);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .mode-btn:hover {
+            color: var(--text-ink);
+            background: rgba(212, 168, 67, 0.08);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--accent-vermillion), var(--accent-forge));
+            color: white;
+            box-shadow: 0 2px 8px rgba(194, 59, 34, 0.2);
+        }
+
+        .mode-btn.active:hover {
+            background: linear-gradient(135deg, var(--accent-deep-red), var(--accent-vermillion));
+        }
+
         .chat-header-title {
             display: flex; align-items: center; gap: 8px;
             font-weight: 600; font-size: 14px; color: var(--text-ink);
@@ -487,7 +526,14 @@
         <div class="chat-panel glass-panel">
             <div class="chat-header">
                 <div class="chat-header-title">对话</div>
-                <span style="font-size:12px;color:var(--text-muted)">按 Enter 发送，Shift+Enter 换行</span>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="font-size:12px;color:var(--text-muted)">按 Enter 发送，Shift+Enter 换行</span>
+                    <div class="mode-switcher" id="mode-switcher">
+                        <button class="mode-btn active" data-mode="auto" onclick="setMode('auto')" title="自动判断是否需要工具">自动</button>
+                        <button class="mode-btn" data-mode="chat" onclick="setMode('chat')" title="纯聊天，不触发工具">聊天</button>
+                        <button class="mode-btn" data-mode="agent" onclick="setMode('agent')" title="强制使用工具执行任务">执行</button>
+                    </div>
+                </div>
             </div>
             <div class="chat-messages" id="chat-messages">
             </div>
@@ -722,6 +768,37 @@
         chatInput.addEventListener('input', function() {
             chatInput.style.height = 'auto';
             chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+        });
+
+        // 模式切换
+        function setMode(mode) {
+            fetch('/mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: mode })
+            }).then(function(res) { return res.json(); }).then(function(data) {
+                if (data.success) {
+                    document.querySelectorAll('.mode-btn').forEach(function(btn) {
+                        btn.classList.toggle('active', btn.dataset.mode === mode);
+                    });
+                    console.log('[Mode] 切换为:', mode);
+                } else {
+                    console.error('[Mode] 切换失败:', data.error);
+                }
+            }).catch(function(err) {
+                console.error('[Mode] 请求失败:', err);
+            });
+        }
+
+        // 页面加载时获取当前模式
+        fetch('/mode').then(function(res) { return res.json(); }).then(function(data) {
+            if (data.mode) {
+                document.querySelectorAll('.mode-btn').forEach(function(btn) {
+                    btn.classList.toggle('active', btn.dataset.mode === data.mode);
+                });
+            }
+        }).catch(function(err) {
+            console.error('[Mode] 获取模式失败:', err);
         });
 
         // 页面加载时触发 LLM 生成自然开场白

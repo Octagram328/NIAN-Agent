@@ -69,12 +69,16 @@ class Agent:
         llm_client: LLMClient | None = None,
         tools: list[Tool] | None = None,
         memory_manager: MemoryManager | None = None,
+        mode: str = "auto",
     ):
         self.llm = llm_client or LLMClient()
         self.tools = {t.name: t for t in (tools or [])}
         self.memory = memory_manager or MemoryManager()
+        self.mode = mode  # "auto" | "chat" | "agent"
 
     def _build_tools_description(self) -> str:
+        if self.mode == "chat":
+            return "(当前为纯聊天模式，不使用工具)"
         lines = []
         for name, tool in self.tools.items():
             lines.append(f"- {name}: {tool.description}")
@@ -88,14 +92,16 @@ class Agent:
         return "\n".join(lines) if lines else "(暂无可用工具)"
 
     def _build_tool_schemas(self) -> list[dict]:
+        if self.mode == "chat":
+            return []
         return [t.to_openai_schema() for t in self.tools.values()]
 
     def run(self, user_input: str, max_tool_steps: int = 5) -> str:
-        """执行一次用户请求，通过原生 Function Calling 调用工具。
+        """执行一次用户请求，支持路由模式切换。
 
         Args:
             user_input: 用户输入
-            max_tool_steps: 最大工具调用步数（防止无限循环）
+            max_tool_steps: 最大工具调用步数（chat 模式下强制为 0）
         """
         # 1. 组装系统提示
         system = SYSTEM_PROMPT.format(tools_description=self._build_tools_description())
@@ -103,13 +109,19 @@ class Agent:
         # 2. 获取历史上下文（简单格式）
         history = self.memory.get_context_messages(user_input, llm_client=self.llm)
 
-        # 3. 构建工具 schema
+        # 3. chat 模式：直接对话，不传递工具
+        if self.mode == "chat":
+            response = self.llm.chat(system, history)
+            self.memory.add_exchange(user_input, response, llm_client=self.llm)
+            return response
+
+        # 4. 构建工具 schema（agent / auto 模式）
         tool_schemas = self._build_tool_schemas()
 
-        # 4. API 消息列表（支持结构化 content blocks）
+        # 5. API 消息列表（支持结构化 content blocks）
         api_messages = list(history)
 
-        # 5. 循环处理工具调用
+        # 6. 循环处理工具调用
         for step in range(max_tool_steps):
             response = self.llm.chat_with_tools(system, api_messages, tools=tool_schemas)
 

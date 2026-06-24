@@ -56,6 +56,30 @@ class ChatResponse(BaseModel):
     response: str
 
 
+class ModeRequest(BaseModel):
+    mode: str  # "auto" | "chat" | "agent"
+
+
+@app.post("/mode")
+def set_mode(req: ModeRequest):
+    """设置 Agent 路由模式：auto / chat / agent"""
+    if not agent:
+        return JSONResponse({"success": False, "error": "Agent 未初始化"}, status_code=500)
+    if req.mode not in ("auto", "chat", "agent"):
+        return JSONResponse({"success": False, "error": "无效模式，可选: auto, chat, agent"}, status_code=400)
+    agent.mode = req.mode
+    print(f"[Mode] 切换为: {req.mode}")
+    return {"success": True, "mode": req.mode}
+
+
+@app.get("/mode")
+def get_mode():
+    """获取当前 Agent 路由模式。"""
+    if not agent:
+        return {"mode": "unknown"}
+    return {"mode": agent.mode}
+
+
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
     if not agent:
