@@ -1,0 +1,64 @@
+{
+  "name": "nian-agent",
+  "version": "1.0.0",
+  "description": "Nian Agent - 本地自动化助手",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "build": "tsc",
+    "electron:dev": "tsc & electron .",
+    "dev": "npm run build",
+    "dist": "npm run build ; electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.nian.agent",
+    "productName": "Nian Agent",
+    "asar": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "web/**/*",
+      "src/**/*",
+      "data/**/*",
+      ".env",
+      "requirements.txt"
+    ],
+    "extraResources": [
+      {
+        "from": "venv",
+        "to": "venv",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  },
+  "keywords": [
+    "agent",
+    "ai",
+    "assistant"
+  ],
+  "author": "Nian",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0"
+  }
+}

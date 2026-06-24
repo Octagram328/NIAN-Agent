@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent GUI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-base: #F8F5F0;
+            --bg-card: rgba(255, 252, 248, 0.65);
+            --bg-card-solid: rgba(255, 252, 248, 0.80);
+            --bg-smoky: #EDE8E0;
+
+            --glow-vermillion: rgba(194, 59, 34, 0.09);
+            --glow-gold: rgba(212, 168, 67, 0.07);
+            --glow-forge: rgba(232, 113, 58, 0.04);
+
+            --border-gold: rgba(212, 168, 67, 0.12);
+            --border-gold-light: rgba(212, 168, 67, 0.08);
+            --border-vermillion: rgba(194, 59, 34, 0.12);
+            --border-vermillion-focus: rgba(194, 59, 34, 0.40);
+
+            --accent-vermillion: #C23B22;
+            --accent-gold: #D4A843;
+            --accent-forge: #E8713A;
+            --accent-deep-red: #9E2A1A;
+            --accent-emerald: #34c77a;
+
+            --text-ink: #1A1412;
+            --text-stone: #A09890;
+            --text-muted: #C0B8B0;
+            --text-label: #8A8278;
+
+            --user-bubble: rgba(212, 168, 67, 0.04);
+            --agent-bubble: rgba(194, 59, 34, 0.035);
+
+            --shadow-card: 0 8px 32px rgba(194, 59, 34, 0.06), 0 2px 8px rgba(0, 0, 0, 0.02);
+            --shadow-btn-hover: 0 6px 24px rgba(194, 59, 34, 0.38);
+            --shadow-focus-ring: 0 0 0 4px rgba(194, 59, 34, 0.07);
+            --shadow-avatar-ring: 0 0 0 2.5px rgba(212, 168, 67, 0.28);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--text-ink);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+
+            /* CRITICAL FIX #1: Three-layer diffused glow backdrop */
+            background:
+                radial-gradient(circle at 15% 15%, var(--glow-vermillion), transparent 55%),
+                radial-gradient(circle at 85% 85%, var(--glow-gold), transparent 55%),
+                radial-gradient(circle at 50% 50%, var(--glow-forge), transparent 40%),
+                var(--bg-base);
+        }
+
+        /* Glass panel utility (CRITICAL FIX #2) */
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px) saturate(1.2);
+            -webkit-backdrop-filter: blur(16px) saturate(1.2);
+            border: 1px solid var(--border-gold);
+            border-radius: 16px;
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+        }
+
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px) saturate(1.2);
+            -webkit-backdrop-filter: blur(16px) saturate(1.2);
+            border: 1px solid var(--border-gold);
+            border-radius: 16px;
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .glass-card:last-child { margin-bottom: 0; }
+
+        /* Topbar (FIX #9) */
+        .topbar {
+            height: 44px;
+            background: rgba(248, 245, 240, 0.72);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(212, 168, 67, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 12px;
+            color: var(--text-stone);
+            z-index: 10;
+            position: relative;
+        }
+
+        .topbar-left { display: flex; align-items: center; gap: 8px; }
+
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent-emerald);
+            box-shadow: 0 0 6px rgba(52, 199, 122, 0.35);
+        }
+
+        .topbar-right { display: flex; align-items: center; gap: 16px; -webkit-app-region: no-drag; }
+
+        /* 窗口控制按钮 */
+        .win-controls {
+            display: none; /* 默认隐藏，Electron 环境下由 JS 显示 */
+            align-items: center;
+            margin-left: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .win-btn {
+            width: 46px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-stone);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            padding: 0;
+        }
+
+        .win-btn:hover {
+            background: rgba(212, 168, 67, 0.15);
+            color: var(--text-ink);
+            transform: scale(1.05);
+        }
+
+        .win-btn.close:hover {
+            background: linear-gradient(135deg, var(--accent-vermillion), var(--accent-forge));
+            color: white;
+            box-shadow: 0 2px 8px rgba(194, 59, 34, 0.25);
+        }
+
+        .win-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 标题栏整体可拖动（但按钮区域不可拖动） */
+        .topbar { -webkit-app-region: drag; }
+        .topbar-left { -webkit-app-region: drag; }
+
+        .model-badge {
+            padding: 2px 10px; border-radius: 20px;
+            background: rgba(194, 59, 34, 0.08);
+            color: var(--accent-vermillion);
+            border: 1px solid rgba(194, 59, 34, 0.12);
+            font-weight: 500; font-size: 11px;
+        }
+
+        /* Main layout */
+        .main {
+            flex: 1; display: flex; overflow: hidden;
+            padding: 16px; gap: 16px;
+            position: relative; z-index: 1;
+        }
+
+        /* Left: Chat */
+        .chat-panel {
+            flex: 3.5; min-width: 0;
+            display: flex; flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 16px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border-gold-light);
+        }
+
+        .chat-header-title {
+            display: flex; align-items: center; gap: 8px;
+            font-weight: 600; font-size: 14px; color: var(--text-ink);
+        }
+
+        .chat-header-title::before {
+            content: ""; width: 3px; height: 14px;
+            background: linear-gradient(180deg, var(--accent-vermillion), var(--accent-forge));
+            border-radius: 2px;
+        }
+
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+
+        /* CRITICAL FIX #3: Chat bubble containers */
+        .message {
+            max-width: 85%;
+            font-size: 14px; line-height: 1.7;
+            word-wrap: break-word;
+            animation: fadeIn 0.35s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--user-bubble);
+            border-right: 3px solid rgba(212, 168, 67, 0.35);
+            border-radius: 14px;
+            padding: 14px 20px;
+            margin: 8px 0;
+            color: var(--text-ink);
+        }
+
+        .message.agent {
+            align-self: flex-start;
+            background: var(--agent-bubble);
+            border-left: 3px solid rgba(194, 59, 34, 0.35);
+            border-radius: 14px;
+            padding: 18px 22px;
+            margin: 12px 0;
+            color: var(--text-ink);
+        }
+
+        .message-thinking {
+            align-self: flex-start;
+            color: var(--text-muted);
+            font-style: italic; font-size: 13px;
+            padding: 8px 0 8px 22px;
+        }
+
+        .chat-input-area {
+            padding: 16px 20px;
+            display: flex; gap: 12px; align-items: flex-end;
+            border-top: 1px solid var(--border-gold-light);
+            background: rgba(248, 245, 240, 0.40);
+        }
+
+        /* FIX #4: Input field enhancement */
+        .chat-input {
+            flex: 1;
+            background: var(--bg-card-solid);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-vermillion);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: var(--text-ink);
+            font-size: 14px; resize: none; outline: none;
+            min-height: 44px; max-height: 120px;
+            font-family: inherit; line-height: 1.5;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .chat-input:focus {
+            border-color: var(--border-vermillion-focus);
+            box-shadow: var(--shadow-focus-ring);
+        }
+
+        .chat-input::placeholder { color: var(--text-muted); }
+
+        /* FIX #5: Send button upgrade */
+        .send-btn {
+            width: 44px; height: 44px; border-radius: 12px; border: none;
+            background: linear-gradient(135deg, var(--accent-vermillion), var(--accent-forge));
+            color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 16px rgba(194, 59, 34, 0.25);
+        }
+
+        .send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-btn-hover);
+        }
+
+        .send-btn:active { transform: translateY(0); }
+
+        .send-btn:disabled {
+            opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none;
+        }
+
+        /* Center: Character (FIX #7) */
+        .character-panel {
+            flex: 2; min-width: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            position: relative;
+            /* Faint dragon-scale / dot pattern watermark */
+            background-image: radial-gradient(circle, rgba(194, 59, 34, 0.04) 1.2px, transparent 1.2px);
+            background-size: 22px 22px;
+        }
+
+        .character-upload {
+            display: flex; flex-direction: column; align-items: center; gap: 14px;
+            z-index: 1; cursor: pointer;
+            padding: 32px;
+            border-radius: 16px;
+            border: 1.5px dashed rgba(194, 59, 34, 0.15);
+            background: rgba(255, 252, 248, 0.45);
+            backdrop-filter: blur(6px);
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .character-upload:hover {
+            border-color: rgba(194, 59, 34, 0.30);
+            background: rgba(255, 252, 248, 0.65);
+        }
+
+        .character-upload svg {
+            width: 48px; height: 48px;
+            stroke: var(--accent-vermillion);
+            opacity: 0.5;
+        }
+
+        .character-upload span {
+            font-size: 13px; color: var(--text-stone);
+            letter-spacing: 0.3px;
+        }
+
+        .character-label {
+            position: absolute; bottom: 24px; z-index: 1;
+            text-align: center;
+        }
+
+        .character-name {
+            font-size: 16px; font-weight: 600;
+            background: linear-gradient(90deg, var(--accent-vermillion), var(--accent-gold));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        .character-sub {
+            font-size: 11px; color: var(--text-muted); margin-top: 4px;
+        }
+
+        /* Right: Info panel (FIX #8: grouped into separate glass cards) */
+        .info-panel {
+            flex: 1; min-width: 180px;
+            display: flex; flex-direction: column;
+            background: transparent; border: none; box-shadow: none;
+            backdrop-filter: none; overflow: visible;
+        }
+
+        .info-section { padding-bottom: 12px; }
+        .info-section:last-child { padding-bottom: 0; }
+
+        .info-section-title {
+            font-size: 10px; text-transform: uppercase;
+            letter-spacing: 1.2px; color: var(--accent-gold);
+            margin-bottom: 14px; font-weight: 600;
+        }
+
+        /* Gold-to-red gradient divider line (FIX #6) */
+        .gold-line {
+            height: 1px;
+            margin: 12px 0;
+            background: linear-gradient(90deg, transparent, rgba(212,168,67,0.35), rgba(194,59,34,0.25), transparent);
+            border: none;
+        }
+
+        .avatar-block {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-vermillion), var(--accent-forge));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 600; color: white;
+            /* FIX #6: gold outer ring */
+            box-shadow: var(--shadow-avatar-ring), 0 4px 12px rgba(194, 59, 34, 0.15);
+        }
+
+        .avatar-info { display: flex; flex-direction: column; }
+
+        .avatar-name { font-size: 13px; font-weight: 600; color: var(--text-ink); }
+
+        .avatar-status {
+            font-size: 11px; color: var(--accent-emerald);
+            display: flex; align-items: center; gap: 4px; font-weight: 500;
+        }
+
+        .memory-block {
+            display: flex; flex-direction: column; gap: 12px;
+        }
+
+        .memory-item { display: flex; flex-direction: column; gap: 5px; }
+
+        .memory-label {
+            font-size: 11px; color: var(--text-stone);
+            display: flex; justify-content: space-between; font-weight: 500;
+        }
+
+        .memory-bar {
+            height: 5px; border-radius: 3px;
+            background: rgba(212, 168, 67, 0.12);
+            overflow: hidden;
+        }
+
+        .memory-bar-fill {
+            height: 100%; border-radius: 3px; transition: width 0.6s ease;
+            /* FIX #6: all progress bars use vermillion-to-gold gradient */
+            background: linear-gradient(90deg, var(--accent-vermillion), var(--accent-gold));
+        }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .stat-item {
+            background: rgba(237, 232, 224, 0.45);
+            border: 1px solid var(--border-gold-light);
+            border-radius: 12px;
+            padding: 14px 8px;
+            text-align: center;
+            backdrop-filter: blur(4px);
+        }
+
+        /* FIX #10: Statistics readability */
+        .stat-value {
+            font-size: 30px; font-weight: 700; line-height: 1;
+        }
+
+        .stat-item:nth-child(1) .stat-value { color: var(--accent-vermillion); }
+        .stat-item:nth-child(2) .stat-value { color: var(--accent-gold); }
+
+        .stat-label {
+            font-size: 11px; color: var(--text-label);
+            margin-top: 6px; letter-spacing: 0.3px; font-weight: 500;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(212, 168, 67, 0.25); border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(212, 168, 67, 0.40); }
+
+        /* Bottom tag */
+        .bottom-tag {
+            position: fixed; bottom: 16px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px; color: var(--text-muted);
+            opacity: 0.45; pointer-events: none; z-index: 10;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 自定义标题栏（无边框窗口的拖动区域 + 窗口控制按钮） -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="status-dot"></div>
+            <span>年 在线</span>
+        </div>
+        <div class="topbar-right">
+            <span id="session-info">当前会话: default</span>
+            <span class="model-badge" id="model-badge">kimi-k2.6</span>
+            <!-- 窗口控制按钮（仅在 Electron 环境下显示） -->
+            <div class="win-controls" id="win-controls">
+                <button class="win-btn minimize" id="win-min" title="最小化">
+                    <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0" y="4" width="10" height="2" rx="1" fill="currentColor"/></svg>
+                </button>
+                <button class="win-btn maximize" id="win-max" title="最大化">
+                    <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                </button>
+                <button class="win-btn close" id="win-close" title="关闭">
+                    <svg width="10" height="10" viewBox="0 0 10 10">
+                        <line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- Left: Chat -->
+        <div class="chat-panel glass-panel">
+            <div class="chat-header">
+                <div class="chat-header-title">对话</div>
+                <span style="font-size:12px;color:var(--text-muted)">按 Enter 发送，Shift+Enter 换行</span>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message agent">
+                    哟，来啦？我是年，别看我一副闲人模样，打铁、写代码、折腾数据这些活儿我可都拿手。今天想整点什么乐子？
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <textarea class="chat-input" id="chat-input" placeholder="输入消息..." rows="1"></textarea>
+                <button class="send-btn" id="send-btn" onclick="sendMessage()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Center: Character -->
+        <div class="character-panel glass-panel">
+            <div class="character-upload" onclick="alert('角色立绘上传功能开发中')">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <span>上传角色立绘</span>
+            </div>
+            <div class="character-label">
+                <div class="character-name">年</div>
+                <div class="character-sub">龙铁匠 · 罗德岛访客</div>
+            </div>
+        </div>
+
+        <!-- Right: Info panel -->
+        <div class="info-panel">
+            <div class="glass-card">
+                <div class="info-section">
+                    <div class="info-section-title">Agent</div>
+                    <div class="avatar-block">
+                        <div class="avatar">AI</div>
+                        <div class="avatar-info">
+                            <div class="avatar-name">年</div>
+                            <div class="avatar-status">
+                                <div class="status-dot"></div>
+                                运行中
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="info-section">
+                    <div class="info-section-title">记忆状态</div>
+                    <div class="memory-block">
+                        <div class="memory-item memory-short">
+                            <div class="memory-label">
+                                <span>短期记忆</span>
+                                <span style="color:var(--accent-forge)">活跃</span>
+                            </div>
+                            <div class="memory-bar"><div class="memory-bar-fill"></div></div>
+                        </div>
+                        <div class="memory-item memory-mid">
+                            <div class="memory-label">
+                                <span>中期记忆</span>
+                                <span style="color:var(--accent-vermillion)">缓存</span>
+                            </div>
+                            <div class="memory-bar"><div class="memory-bar-fill"></div></div>
+                        </div>
+                        <div class="memory-item memory-long">
+                            <div class="memory-label">
+                                <span>长期记忆</span>
+                                <span style="color:var(--accent-deep-red)">已保存</span>
+                            </div>
+                            <div class="memory-bar"><div class="memory-bar-fill"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="info-section">
+                    <div class="info-section-title">统计</div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-messages">1</div>
+                            <div class="stat-label">消息</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-tools">0</div>
+                            <div class="stat-label">工具调用</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-tag">短中长记忆和当前上下文</div>
+
+    <script>
+        // ========== 无边框窗口控制（纯 JavaScript，无 TS 语法） ==========
+        (function initWindowControls() {
+            var winControls = document.getElementById('win-controls');
+            if (!winControls) return;
+
+            // 检测是否在 Electron 环境
+            var api = window.electronAPI;
+            if (!api) return; // 不是 Electron，保持隐藏
+
+            // 显示窗口控制按钮
+            winControls.style.display = 'flex';
+
+            var btnMin = document.getElementById('win-min');
+            var btnMax = document.getElementById('win-max');
+            var btnClose = document.getElementById('win-close');
+
+            btnMin && btnMin.addEventListener('click', function() {
+                if (api.minimizeWindow) api.minimizeWindow();
+            });
+            btnMax && btnMax.addEventListener('click', function() {
+                if (api.maximizeWindow) api.maximizeWindow();
+            });
+            btnClose && btnClose.addEventListener('click', function() {
+                if (api.closeWindow) api.closeWindow();
+            });
+
+            // 监听最大化状态变化，更新按钮图标
+            if (api.onMaximizeChange) {
+                api.onMaximizeChange(function(isMaximized) {
+                    var svg = isMaximized
+                        ? '<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="2.5" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 0.5h7v7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+                        : '<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+                    if (btnMax) btnMax.innerHTML = svg;
+                });
+            }
+
+            // 初始化时查询一次窗口状态
+            if (api.isMaximized) {
+                api.isMaximized().then(function(isMaximized) {
+                    var svg = isMaximized
+                        ? '<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="2.5" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 0.5h7v7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+                        : '<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+                    if (btnMax) btnMax.innerHTML = svg;
+                }).catch(function() {});
+            }
+        })();
+
+        // ========== 聊天逻辑 ==========
+        var chatMessages = document.getElementById('chat-messages');
+        var chatInput = document.getElementById('chat-input');
+        var sendBtn = document.getElementById('send-btn');
+        var statMessages = document.getElementById('stat-messages');
+        var messageCount = 1;
+        var isWaiting = false;
+
+        function appendMessage(role, text) {
+            var div = document.createElement('div');
+            div.className = 'message ' + role;
+            div.textContent = text;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function appendThinking() {
+            var div = document.createElement('div');
+            div.className = 'message-thinking';
+            div.id = 'thinking-msg';
+            div.textContent = 'Agent 思考中...';
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeThinking() {
+            var el = document.getElementById('thinking-msg');
+            if (el) el.remove();
+        }
+
+        async function sendMessage() {
+            var text = chatInput.value.trim();
+            if (!text || isWaiting) return;
+
+            appendMessage('user', text);
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            appendThinking();
+            isWaiting = true;
+            sendBtn.disabled = true;
+
+            try {
+                var res = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+
+                var data;
+                var responseText = await res.text();
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseErr) {
+                    // 后端返回的不是 JSON（理论上现在不会发生了，但作为兜底）
+                    removeThinking();
+                    appendMessage('agent', '后端返回异常（非JSON）:\n' + responseText.substring(0, 500));
+                    isWaiting = false;
+                    sendBtn.disabled = false;
+                    return;
+                }
+
+                removeThinking();
+                if (!res.ok) {
+                    // HTTP 错误状态码
+                    appendMessage('agent', '服务错误 [' + res.status + ']: ' + (data.detail || data.response || '未知错误'));
+                } else {
+                    appendMessage('agent', data.response);
+                    messageCount += 2;
+                    statMessages.textContent = messageCount;
+                }
+            } catch (err) {
+                removeThinking();
+                appendMessage('agent', '网络请求出错: ' + err.message);
+            } finally {
+                isWaiting = false;
+                sendBtn.disabled = false;
+            }
+        }
+
+        chatInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        chatInput.addEventListener('input', function() {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+        });
+    </script>
+</body>
+</html>
